@@ -1,5 +1,7 @@
 package com.playground.mqtt.context;
 
+import com.playground.mqtt.transport.channel.NioSocketChannel;
+
 import java.nio.channels.SocketChannel;
 
 public class HandlerContextNode implements ChannelContext {
@@ -23,6 +25,15 @@ public class HandlerContextNode implements ChannelContext {
     @Override
     public SocketChannel channel() {
         return this.pipeline.socketChannel();
+    }
+
+    @Override
+    public NioSocketChannel nioChannel() {
+        ConnectionAttachment attachment = attachment();
+        if (attachment != null && attachment.getNioSocketChannel() != null) {
+            return attachment.getNioSocketChannel();
+        }
+        return new NioSocketChannel(channel(), attachment);
     }
 
     @Override

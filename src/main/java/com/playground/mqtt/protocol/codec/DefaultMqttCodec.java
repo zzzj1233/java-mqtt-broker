@@ -1,9 +1,8 @@
 package com.playground.mqtt.protocol.codec;
 
-import com.playground.mqtt.protocol.decode.ConnectPacketDecoder;
-import com.playground.mqtt.protocol.decode.DecodedPacket;
-import com.playground.mqtt.protocol.decode.PacketDecoder;
-import com.playground.mqtt.protocol.decode.SubscribePacketDecoder;
+import com.playground.mqtt.protocol.decode.*;
+import com.playground.mqtt.protocol.encode.PacketEncoder;
+import com.playground.mqtt.protocol.encode.PublishEncoder;
 import com.playground.mqtt.protocol.frame.MqttFrame;
 import com.playground.mqtt.protocol.frame.MqttPacketType;
 import com.playground.mqtt.protocol.io.ByteBufferReader;
@@ -14,13 +13,22 @@ import java.util.HashMap;
 import java.util.Map;
 
 public final class DefaultMqttCodec implements MqttCodec {
+
     private final Map<MqttPacketType, PacketDecoder> decoders;
 
+    private final Map<MqttPacketType, PacketEncoder> encoders;
+
     public DefaultMqttCodec() {
-        Map<MqttPacketType, PacketDecoder> decoderMap = new HashMap<MqttPacketType, PacketDecoder>();
+        Map<MqttPacketType, PacketDecoder> decoderMap = new HashMap<>();
         decoderMap.put(MqttPacketType.CONNECT, new ConnectPacketDecoder());
         decoderMap.put(MqttPacketType.SUBSCRIBE, new SubscribePacketDecoder());
+        decoderMap.put(MqttPacketType.PUBLISH, new PublishPacketDecoder());
+
+        Map<MqttPacketType, PacketEncoder> encoderMap = new HashMap<>();
+        encoderMap.put(MqttPacketType.PUBLISH, new PublishEncoder());
+
         this.decoders = decoderMap;
+        this.encoders = encoderMap;
     }
 
     @Override
@@ -93,6 +101,12 @@ public final class DefaultMqttCodec implements MqttCodec {
 
     @Override
     public ByteBuffer encode(MqttFrame frame) throws IOException {
-        return null;
+
+        PacketEncoder packetEncoder = this.encoders.get(frame.packetType());
+
+        if (packetEncoder == null)
+            throw new IOException("No encoder for packet type: " + frame.packetType());
+
+        return packetEncoder.encode(frame);
     }
 }

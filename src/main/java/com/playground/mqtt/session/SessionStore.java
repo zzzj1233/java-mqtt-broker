@@ -1,7 +1,8 @@
 package com.playground.mqtt.session;
 
+import com.playground.mqtt.transport.channel.NioSocketChannel;
+
 import java.io.IOException;
-import java.nio.channels.SocketChannel;
 import java.util.Optional;
 
 public interface SessionStore extends AutoCloseable {
@@ -10,9 +11,9 @@ public interface SessionStore extends AutoCloseable {
 
     Optional<ClientSession> findByClientId(String clientId);
 
-    Optional<ClientSession> findByChannel(SocketChannel channel);
+    Optional<ClientSession> findByChannel(NioSocketChannel channel);
 
-    void removeByChannel(SocketChannel channel);
+    void removeByChannel(NioSocketChannel channel);
 
     @Override
     default void close() throws IOException {

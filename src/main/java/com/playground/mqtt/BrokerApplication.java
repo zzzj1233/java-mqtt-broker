@@ -8,6 +8,7 @@ import com.playground.mqtt.context.ChannelPipelineFactory;
 import com.playground.mqtt.context.DefaultChannelPipelineFactory;
 import com.playground.mqtt.context.handlers.MqttCodecHandler;
 import com.playground.mqtt.context.handlers.ConnectionHandler;
+import com.playground.mqtt.context.handlers.PublishHandler;
 import com.playground.mqtt.context.handlers.SubscribeHandler;
 import com.playground.mqtt.router.DefaultMessageRouter;
 import com.playground.mqtt.router.MessageRouter;
@@ -36,10 +37,10 @@ public final class BrokerApplication {
         MessageRouter messageRouter = new DefaultMessageRouter();
         ChannelPipelineFactory pipelineFactory = new DefaultChannelPipelineFactory(
                 pipeline -> {
-
                     pipeline.addLast(new MqttCodecHandler());
                     pipeline.addLast(new ConnectionHandler(sessionStore));
                     pipeline.addLast(new SubscribeHandler(subscriptionStore, sessionStore));
+                    pipeline.addLast(new PublishHandler(subscriptionStore));
                     pipeline.addLast(new ChannelInboundHandler() {
                         @Override
                         public void channelRead(ChannelContext ctx, Object msg) {

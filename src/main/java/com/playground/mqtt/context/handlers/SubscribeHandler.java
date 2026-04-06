@@ -26,8 +26,9 @@ public class SubscribeHandler implements ChannelInboundHandler {
     public void channelRead(ChannelContext ctx, Object msg) {
 
         if (msg instanceof SubscribeMqttFrame) {
+            var channel = ctx.nioChannel();
 
-            Optional<ClientSession> sessionOpt = sessionStore.findByChannel(ctx.channel());
+            Optional<ClientSession> sessionOpt = sessionStore.findByChannel(channel);
 
             if (sessionOpt.isEmpty()) {
                 // 未建立会话，拒绝或关闭连接
@@ -41,7 +42,7 @@ public class SubscribeHandler implements ChannelInboundHandler {
                     clientId,
                     subscribeMqttFrame.getTopicFilter(),
                     subscribeMqttFrame.getRequestedQos(),
-                    ctx.channel()
+                    channel
             ));
 
             System.out.printf(

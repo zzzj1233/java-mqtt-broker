@@ -1,5 +1,7 @@
 package com.playground.mqtt.context;
 
+import com.playground.mqtt.transport.channel.NioSocketChannel;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -15,6 +17,8 @@ public class ConnectionAttachment {
     long lastActiveNanos;
 
     boolean closing;
+
+    NioSocketChannel nioSocketChannel;
 
     ChannelPipeline channelPipeline;
 
@@ -56,5 +60,16 @@ public class ConnectionAttachment {
 
     public void setChannelPipeline(ChannelPipeline channelPipeline) {
         this.channelPipeline = channelPipeline;
+    }
+
+    public NioSocketChannel getNioSocketChannel() {
+        return nioSocketChannel;
+    }
+
+    public void setNioSocketChannel(NioSocketChannel nioSocketChannel) {
+        this.nioSocketChannel = nioSocketChannel;
+        if (nioSocketChannel != null) {
+            nioSocketChannel.setAttachment(this);
+        }
     }
 }

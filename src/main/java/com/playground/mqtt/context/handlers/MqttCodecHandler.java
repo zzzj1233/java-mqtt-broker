@@ -39,4 +39,18 @@ public class MqttCodecHandler implements ChannelInboundHandler, ChannelOutboundH
         }
     }
 
+    @Override
+    public void channelWrite(ChannelContext ctx, Object msg) {
+        if (msg instanceof MqttFrame) {
+            try {
+                ByteBuffer encoded = codec.encode((MqttFrame) msg);
+                ctx.fireChannelWrite(encoded);
+            } catch (IOException e) {
+                ctx.fireExceptionCaught(e);
+                ctx.close(); // 解码失败通常断开连接更安全
+            }
+        } else {
+            ctx.fireChannelWrite(msg);
+        }
+    }
 }

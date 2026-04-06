@@ -1,6 +1,7 @@
 package com.playground.mqtt.session;
 
-import java.nio.channels.SocketChannel;
+import com.playground.mqtt.transport.channel.NioSocketChannel;
+
 import java.time.Instant;
 
 public final class ClientSession {
@@ -8,14 +9,14 @@ public final class ClientSession {
     private final String clientId;
     private final boolean cleanSession;
     private final int keepAliveSeconds;
-    private final SocketChannel channel;
+    private final NioSocketChannel channel;
     private final Instant connectedAt;
 
     public ClientSession(
             String clientId,
             boolean cleanSession,
             int keepAliveSeconds,
-            SocketChannel channel,
+            NioSocketChannel channel,
             Instant connectedAt
     ) {
         this.clientId = clientId;
@@ -37,7 +38,7 @@ public final class ClientSession {
         return keepAliveSeconds;
     }
 
-    public SocketChannel channel() {
+    public NioSocketChannel channel() {
         return channel;
     }
 

@@ -1,15 +1,15 @@
 package com.playground.mqtt.subscription;
 
-import java.nio.channels.SocketChannel;
+import com.playground.mqtt.transport.channel.NioSocketChannel;
 
 public final class Subscription {
 
     private final String clientId;
     private final String topicFilter;
     private final int qos;
-    private final SocketChannel channel;
+    private final NioSocketChannel channel;
 
-    public Subscription(String clientId, String topicFilter, int qos, SocketChannel channel) {
+    public Subscription(String clientId, String topicFilter, int qos, NioSocketChannel channel) {
         this.clientId = clientId;
         this.topicFilter = topicFilter;
         this.qos = qos;
@@ -28,7 +28,7 @@ public final class Subscription {
         return topicFilter;
     }
 
-    public SocketChannel channel() {
+    public NioSocketChannel channel() {
         return channel;
     }
 }

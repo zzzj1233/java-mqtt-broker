@@ -25,8 +25,9 @@ public class ConnectionHandler implements ChannelInboundHandler {
             ConnectMqttFrame connectMqttFrame = (ConnectMqttFrame) msg;
 
             String clientId = connectMqttFrame.clientId();
+            var channel = ctx.nioChannel();
 
-            sessionStore.bind(new ClientSession(clientId, connectMqttFrame.cleanSession(), connectMqttFrame.keepAliveSeconds(), ctx.channel(), Instant.now()));
+            sessionStore.bind(new ClientSession(clientId, connectMqttFrame.cleanSession(), connectMqttFrame.keepAliveSeconds(), channel, Instant.now()));
 
             // CONNECT_ACK
             System.out.printf("Send CONNACK to clientId=%s, channel=%s%n", clientId, ctx.channel());

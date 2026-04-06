@@ -7,6 +7,7 @@ import com.playground.mqtt.context.ChannelPipelineFactory;
 import com.playground.mqtt.router.MessageRouter;
 import com.playground.mqtt.session.SessionStore;
 import com.playground.mqtt.subscription.SubscriptionStore;
+import com.playground.mqtt.transport.channel.NioSocketChannel;
 import com.playground.mqtt.transport.poller.Poller;
 import com.playground.mqtt.transport.poller.PollerEvent;
 import com.playground.mqtt.transport.socket.SocketAcceptor;
@@ -158,6 +159,8 @@ public class BrokerServer {
             socketAcceptor.configureClientChannel(client);
 
             ConnectionAttachment attachment = new ConnectionAttachment();
+            NioSocketChannel nioSocketChannel = new NioSocketChannel(client, attachment);
+            attachment.setNioSocketChannel(nioSocketChannel);
 
             ChannelPipeline channelPipeline = channelPipelineFactory.createChannelPipeline(client, attachment);
 
@@ -182,7 +185,7 @@ public class BrokerServer {
         int bytesRead = clientChannel.read(readBuffer);
 
         if (bytesRead < 0) {
-            closeClient(clientChannel);
+            closeClient(clientChannel, connectionAttachment);
             return;
         }
 
@@ -202,9 +205,13 @@ public class BrokerServer {
 
     }
 
-    private void closeClient(SocketChannel clientChannel) {
+    private void closeClient(SocketChannel clientChannel, ConnectionAttachment attachment) {
+        NioSocketChannel nioChannel = attachment != null ? attachment.getNioSocketChannel() : null;
+        if (nioChannel == null) {
+            nioChannel = new NioSocketChannel(clientChannel);
+        }
         try {
-            sessionStore.removeByChannel(clientChannel);
+            sessionStore.removeByChannel(nioChannel);
         } catch (Exception ignored) {
             // Template stage: cleanup failures should not block channel close.
         }
@@ -225,7 +232,11 @@ public class BrokerServer {
             return;
         }
         if (event.channel() instanceof SocketChannel) {
-            closeClient((SocketChannel) event.channel());
+            ConnectionAttachment attachment = null;
+            if (event.attachment() instanceof ConnectionAttachment) {
+                attachment = (ConnectionAttachment) event.attachment();
+            }
+            closeClient((SocketChannel) event.channel(), attachment);
             return;
         }
         try {
