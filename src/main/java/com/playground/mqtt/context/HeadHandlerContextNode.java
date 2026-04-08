@@ -13,7 +13,15 @@ public class HeadHandlerContextNode extends HandlerContextNode {
             }
             ByteBuffer buf = (ByteBuffer) msg;
             try {
-                ctx.channel().write(buf);
+                int before = buf.remaining();
+                int written = ctx.channel().write(buf);
+                System.out.printf(
+                        "Head write channel=%s written=%d requested=%d remainingAfter=%d%n",
+                        ctx.channel(),
+                        written,
+                        before,
+                        buf.remaining()
+                );
             } catch (java.io.IOException e) {
                 ctx.fireExceptionCaught(e);
                 ctx.close();

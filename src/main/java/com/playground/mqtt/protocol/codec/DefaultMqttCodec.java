@@ -2,6 +2,7 @@ package com.playground.mqtt.protocol.codec;
 
 import com.playground.mqtt.protocol.decode.*;
 import com.playground.mqtt.protocol.encode.PacketEncoder;
+import com.playground.mqtt.protocol.encode.PubAckEncoder;
 import com.playground.mqtt.protocol.encode.PublishEncoder;
 import com.playground.mqtt.protocol.frame.MqttFrame;
 import com.playground.mqtt.protocol.frame.MqttPacketType;
@@ -26,6 +27,7 @@ public final class DefaultMqttCodec implements MqttCodec {
 
         Map<MqttPacketType, PacketEncoder> encoderMap = new HashMap<>();
         encoderMap.put(MqttPacketType.PUBLISH, new PublishEncoder());
+        encoderMap.put(MqttPacketType.PUBACK, new PubAckEncoder());
 
         this.decoders = decoderMap;
         this.encoders = encoderMap;

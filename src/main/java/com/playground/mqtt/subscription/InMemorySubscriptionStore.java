@@ -15,6 +15,13 @@ public final class InMemorySubscriptionStore implements SubscriptionStore {
                 subscription.clientId(),
                 s -> Collections.synchronizedList(new ArrayList<>())
         ).add(subscription);
+        System.out.printf(
+                "SubscriptionStore add clientId=%s topic=%s qos=%d totalClients=%d%n",
+                subscription.clientId(),
+                subscription.topicFilter(),
+                subscription.qos(),
+                clientIdToSubscription.size()
+        );
     }
 
     @Override
@@ -26,10 +33,16 @@ public final class InMemorySubscriptionStore implements SubscriptionStore {
     @Override
     public List<Subscription> matchTopic(String topicName) {
 
-        return clientIdToSubscription.values().stream()
+        List<Subscription> matched = clientIdToSubscription.values().stream()
                 .flatMap(Collection::stream)
                 .filter(subscription -> subscription.topicFilter().equals(topicName))
                 .collect(Collectors.toList());
+        System.out.printf(
+                "SubscriptionStore match topic=%s matched=%d%n",
+                topicName,
+                matched.size()
+        );
+        return matched;
 
     }
 }

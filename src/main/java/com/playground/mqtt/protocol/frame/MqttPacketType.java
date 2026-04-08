@@ -4,6 +4,7 @@ public enum MqttPacketType {
     CONNECT(1),
     CONNACK(2),
     PUBLISH(3),
+    PUBACK(4),
     SUBSCRIBE(8),
     SUBACK(9),
     UNSUBSCRIBE(10),

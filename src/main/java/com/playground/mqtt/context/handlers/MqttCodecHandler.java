@@ -28,7 +28,18 @@ public class MqttCodecHandler implements ChannelInboundHandler, ChannelOutboundH
         try {
             MqttFrame frame = codec.tryDecode(in);
             if (frame != null) {
+                System.out.printf(
+                        "MqttCodecHandler decoded frame type=%s from channel=%s%n",
+                        frame.packetType(),
+                        ctx.channel()
+                );
                 ctx.fireChannelRead(frame);
+            } else {
+                System.out.printf(
+                        "MqttCodecHandler decode incomplete/unsupported for channel=%s (buffer rem=%d)%n",
+                        ctx.channel(),
+                        in.remaining()
+                );
             }
         } catch (IOException e) {
             ctx.fireExceptionCaught(e);
@@ -44,6 +55,12 @@ public class MqttCodecHandler implements ChannelInboundHandler, ChannelOutboundH
         if (msg instanceof MqttFrame) {
             try {
                 ByteBuffer encoded = codec.encode((MqttFrame) msg);
+                System.out.printf(
+                        "MqttCodecHandler encoded frame type=%s bytes=%d for channel=%s%n",
+                        ((MqttFrame) msg).packetType(),
+                        encoded.remaining(),
+                        ctx.channel()
+                );
                 ctx.fireChannelWrite(encoded);
             } catch (IOException e) {
                 ctx.fireExceptionCaught(e);

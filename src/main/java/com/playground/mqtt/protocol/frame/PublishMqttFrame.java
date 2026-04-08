@@ -38,4 +38,11 @@ public class PublishMqttFrame extends MqttFrame {
     public Integer getPacketId() {
         return packetId;
     }
+
+    public byte[] payloadBytes() {
+        ByteBuffer payload = payload().duplicate();
+        byte[] bytes = new byte[payload.remaining()];
+        payload.get(bytes);
+        return bytes;
+    }
 }

@@ -25,35 +25,38 @@ public class SubscribeHandler implements ChannelInboundHandler {
     @Override
     public void channelRead(ChannelContext ctx, Object msg) {
 
-        if (msg instanceof SubscribeMqttFrame) {
-            var channel = ctx.nioChannel();
-
-            Optional<ClientSession> sessionOpt = sessionStore.findByChannel(channel);
-
-            if (sessionOpt.isEmpty()) {
-                // 未建立会话，拒绝或关闭连接
-                return;
-            }
-
-            SubscribeMqttFrame subscribeMqttFrame = (SubscribeMqttFrame) msg;
-            String clientId = sessionOpt.get().clientId();
-
-            subscriptionStore.add(new Subscription(
-                    clientId,
-                    subscribeMqttFrame.getTopicFilter(),
-                    subscribeMqttFrame.getRequestedQos(),
-                    channel
-            ));
-
-            System.out.printf(
-                    "Send SUBACK to clientId=%s, packetId=%d, topic=%s, qos=%d%n",
-                    clientId,
-                    subscribeMqttFrame.getPacketId(),
-                    subscribeMqttFrame.getTopicFilter(),
-                    subscribeMqttFrame.getRequestedQos()
-            );
-            ctx.writeAndFlush(buildSubAck(subscribeMqttFrame.getPacketId(), 0x00));
+        if (!(msg instanceof SubscribeMqttFrame)){
+            ctx.fireChannelRead(msg);
+            return;
         }
+
+        var channel = ctx.nioChannel();
+
+        Optional<ClientSession> sessionOpt = sessionStore.findByChannel(channel);
+
+        if (sessionOpt.isEmpty()) {
+            // 未建立会话，拒绝或关闭连接
+            return;
+        }
+
+        SubscribeMqttFrame subscribeMqttFrame = (SubscribeMqttFrame) msg;
+        String clientId = sessionOpt.get().clientId();
+
+        subscriptionStore.add(new Subscription(
+                clientId,
+                subscribeMqttFrame.getTopicFilter(),
+                subscribeMqttFrame.getRequestedQos(),
+                channel
+        ));
+
+        System.out.printf(
+                "Send SUBACK to clientId=%s, packetId=%d, topic=%s, qos=%d%n",
+                clientId,
+                subscribeMqttFrame.getPacketId(),
+                subscribeMqttFrame.getTopicFilter(),
+                subscribeMqttFrame.getRequestedQos()
+        );
+        ctx.writeAndFlush(buildSubAck(subscribeMqttFrame.getPacketId(), 0x00));
 
     }
 
