@@ -24,6 +24,7 @@ public final class DefaultMqttCodec implements MqttCodec {
         decoderMap.put(MqttPacketType.CONNECT, new ConnectPacketDecoder());
         decoderMap.put(MqttPacketType.SUBSCRIBE, new SubscribePacketDecoder());
         decoderMap.put(MqttPacketType.PUBLISH, new PublishPacketDecoder());
+        decoderMap.put(MqttPacketType.PUBACK, new PubAckDecoder());
 
         Map<MqttPacketType, PacketEncoder> encoderMap = new HashMap<>();
         encoderMap.put(MqttPacketType.PUBLISH, new PublishEncoder());

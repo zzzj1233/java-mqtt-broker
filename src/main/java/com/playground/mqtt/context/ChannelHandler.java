@@ -12,4 +12,8 @@ public interface ChannelHandler {
         ctx.fireChannelInactive();
     }
 
+    default void close(ChannelContext ctx) {
+        ctx.fireChannelClose();
+    }
+
 }

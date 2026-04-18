@@ -1,8 +1,12 @@
 package com.playground.mqtt.context;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class HeadHandlerContextNode extends HandlerContextNode {
+    private static final Logger LOG = LoggerFactory.getLogger(HeadHandlerContextNode.class);
 
     private final static ChannelHandler headChannelHandler = new ChannelOutboundHandler() {
         @Override
@@ -12,19 +16,18 @@ public class HeadHandlerContextNode extends HandlerContextNode {
                 return;
             }
             ByteBuffer buf = (ByteBuffer) msg;
+
+            ctx.attachment().getOutboundQueue().add(buf);
+        }
+
+        @Override
+        public void close(ChannelContext ctx) {
             try {
-                int before = buf.remaining();
-                int written = ctx.channel().write(buf);
-                System.out.printf(
-                        "Head write channel=%s written=%d requested=%d remainingAfter=%d%n",
-                        ctx.channel(),
-                        written,
-                        before,
-                        buf.remaining()
-                );
-            } catch (java.io.IOException e) {
-                ctx.fireExceptionCaught(e);
-                ctx.close();
+                ctx.attachment().getOutboundQueue().clear();
+                ctx.nioChannel().rawChannel().close();
+            } catch (IOException e) {
+                LOG.warn("Failed to close channel: {}", ctx.channel(), e);
+                ctx.fireExceptionCaught(e); // 可选，但建议保留
             }
         }
     };

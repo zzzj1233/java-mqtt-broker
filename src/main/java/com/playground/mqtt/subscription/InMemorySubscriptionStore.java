@@ -1,10 +1,14 @@
 package com.playground.mqtt.subscription;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public final class InMemorySubscriptionStore implements SubscriptionStore {
+    private static final Logger LOG = LoggerFactory.getLogger(InMemorySubscriptionStore.class);
 
     private final Map<String, List<Subscription>> clientIdToSubscription = new ConcurrentHashMap<>();
 
@@ -15,8 +19,8 @@ public final class InMemorySubscriptionStore implements SubscriptionStore {
                 subscription.clientId(),
                 s -> Collections.synchronizedList(new ArrayList<>())
         ).add(subscription);
-        System.out.printf(
-                "SubscriptionStore add clientId=%s topic=%s qos=%d totalClients=%d%n",
+        LOG.debug(
+                "SubscriptionStore add clientId={} topic={} qos={} totalClients={}",
                 subscription.clientId(),
                 subscription.topicFilter(),
                 subscription.qos(),
@@ -37,8 +41,8 @@ public final class InMemorySubscriptionStore implements SubscriptionStore {
                 .flatMap(Collection::stream)
                 .filter(subscription -> subscription.topicFilter().equals(topicName))
                 .collect(Collectors.toList());
-        System.out.printf(
-                "SubscriptionStore match topic=%s matched=%d%n",
+        LOG.debug(
+                "SubscriptionStore match topic={} matched={}",
                 topicName,
                 matched.size()
         );

@@ -20,6 +20,8 @@ public interface ChannelContext {
 
     void fireChannelInactive();
 
+    void fireChannelClose();
+
     void writeAndFlush(Object msg);
 
     void close();

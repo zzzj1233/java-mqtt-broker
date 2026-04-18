@@ -21,7 +21,7 @@ public class PublishPacketDecoder implements PacketDecoder {
         int dup = (flags >>> 3) & 0b01;
 
         // 00000000
-        int qos = (flags >>> 2) & 0b11;
+        int qos = (flags >>> 1) & 0b11;
 
         if (qos == 3) {
             return null;

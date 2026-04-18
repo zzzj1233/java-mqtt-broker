@@ -6,11 +6,14 @@ import com.playground.mqtt.context.ChannelOutboundHandler;
 import com.playground.mqtt.protocol.codec.DefaultMqttCodec;
 import com.playground.mqtt.protocol.codec.MqttCodec;
 import com.playground.mqtt.protocol.frame.MqttFrame;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public class MqttCodecHandler implements ChannelInboundHandler, ChannelOutboundHandler {
+    private static final Logger LOG = LoggerFactory.getLogger(MqttCodecHandler.class);
 
     private final MqttCodec codec;
 
@@ -28,18 +31,11 @@ public class MqttCodecHandler implements ChannelInboundHandler, ChannelOutboundH
         try {
             MqttFrame frame = codec.tryDecode(in);
             if (frame != null) {
-                System.out.printf(
-                        "MqttCodecHandler decoded frame type=%s from channel=%s%n",
-                        frame.packetType(),
-                        ctx.channel()
-                );
+                LOG.debug("MqttCodecHandler decoded frame type={} from channel={}", frame.packetType(), ctx.channel());
                 ctx.fireChannelRead(frame);
             } else {
-                System.out.printf(
-                        "MqttCodecHandler decode incomplete/unsupported for channel=%s (buffer rem=%d)%n",
-                        ctx.channel(),
-                        in.remaining()
-                );
+                LOG.debug("MqttCodecHandler decode incomplete/unsupported for channel={} (buffer rem={})",
+                        ctx.channel(), in.remaining());
             }
         } catch (IOException e) {
             ctx.fireExceptionCaught(e);
@@ -55,12 +51,8 @@ public class MqttCodecHandler implements ChannelInboundHandler, ChannelOutboundH
         if (msg instanceof MqttFrame) {
             try {
                 ByteBuffer encoded = codec.encode((MqttFrame) msg);
-                System.out.printf(
-                        "MqttCodecHandler encoded frame type=%s bytes=%d for channel=%s%n",
-                        ((MqttFrame) msg).packetType(),
-                        encoded.remaining(),
-                        ctx.channel()
-                );
+                LOG.debug("MqttCodecHandler encoded frame type={} bytes={} for channel={}",
+                        ((MqttFrame) msg).packetType(), encoded.remaining(), ctx.channel());
                 ctx.fireChannelWrite(encoded);
             } catch (IOException e) {
                 ctx.fireExceptionCaught(e);

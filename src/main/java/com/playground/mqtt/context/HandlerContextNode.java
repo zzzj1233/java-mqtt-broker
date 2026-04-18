@@ -62,23 +62,18 @@ public class HandlerContextNode implements ChannelContext {
     }
 
     @Override
+    public void fireChannelClose() {
+        findPreviousOutboundHandler().invokeChannelClose();
+    }
+
+    @Override
     public void writeAndFlush(Object msg) {
         fireChannelWrite(msg);
     }
 
     @Override
     public void close() {
-        try {
-            findPreviousOutboundHandler().close();
-        } catch (IllegalStateException e) {
-            try {
-                SocketChannel ch = channel();
-                if (ch != null && ch.isOpen()) {
-                    ch.close();
-                }
-            } catch (Exception ignored) {
-            }
-        }
+        fireChannelClose();
     }
 
     private HandlerContextNode findPreviousOutboundHandler() {
@@ -131,6 +126,14 @@ public class HandlerContextNode implements ChannelContext {
     private void invokeChannelInactive() {
         try {
             handler.channelInactive(this);
+        } catch (Throwable t) {
+            invokeExceptionCaught(t);
+        }
+    }
+
+    private void invokeChannelClose() {
+        try {
+            handler.close(this);
         } catch (Throwable t) {
             invokeExceptionCaught(t);
         }

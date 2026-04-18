@@ -7,11 +7,14 @@ import com.playground.mqtt.session.ClientSession;
 import com.playground.mqtt.session.SessionStore;
 import com.playground.mqtt.subscription.Subscription;
 import com.playground.mqtt.subscription.SubscriptionStore;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
 public class SubscribeHandler implements ChannelInboundHandler {
+    private static final Logger LOG = LoggerFactory.getLogger(SubscribeHandler.class);
 
     private final SubscriptionStore subscriptionStore;
 
@@ -49,13 +52,11 @@ public class SubscribeHandler implements ChannelInboundHandler {
                 channel
         ));
 
-        System.out.printf(
-                "Send SUBACK to clientId=%s, packetId=%d, topic=%s, qos=%d%n",
+        LOG.info("Send SUBACK to clientId={}, packetId={}, topic={}, qos={}",
                 clientId,
                 subscribeMqttFrame.getPacketId(),
                 subscribeMqttFrame.getTopicFilter(),
-                subscribeMqttFrame.getRequestedQos()
-        );
+                subscribeMqttFrame.getRequestedQos());
         ctx.writeAndFlush(buildSubAck(subscribeMqttFrame.getPacketId(), 0x00));
 
     }

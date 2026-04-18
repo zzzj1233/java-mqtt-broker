@@ -11,14 +11,18 @@ import com.playground.mqtt.transport.channel.NioSocketChannel;
 import com.playground.mqtt.transport.poller.Poller;
 import com.playground.mqtt.transport.poller.PollerEvent;
 import com.playground.mqtt.transport.socket.SocketAcceptor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
+import java.util.Deque;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 public class BrokerServer {
+    private static final Logger LOG = LoggerFactory.getLogger(BrokerServer.class);
     private final BrokerConfig config;
     private final Poller poller;
     private final SocketAcceptor socketAcceptor;
@@ -50,11 +54,7 @@ public class BrokerServer {
 
     public void start() throws IOException {
         running = true;
-        System.out.printf(
-                "NIO template broker started on port %d (pollTimeoutMs=%d)%n",
-                config.port(),
-                config.pollTimeoutMs()
-        );
+        LOG.info("NIO template broker started on port {} (pollTimeoutMs={})", config.port(), config.pollTimeoutMs());
         ServerSocketChannel serverSocketChannel = socketAcceptor.openServerChannel(config);
         poller.register(serverSocketChannel, SelectionKey.OP_ACCEPT, null);
 
@@ -63,7 +63,7 @@ public class BrokerServer {
             try {
                 events = poller.poll(config.pollTimeoutMs());
             } catch (IOException pollError) {
-                System.err.printf("Poller failure, stopping broker: %s%n", pollError.getMessage());
+                LOG.error("Poller failure, stopping broker", pollError);
                 stop();
                 break;
             }
@@ -85,7 +85,7 @@ public class BrokerServer {
             try {
                 dispatchEvent(event);
             } catch (Exception eventError) {
-                System.err.printf("Event handling failure: %s%n", eventError.getMessage());
+                LOG.warn("Event handling failure", eventError);
                 safeCloseEventChannel(event);
             }
         }
@@ -166,7 +166,7 @@ public class BrokerServer {
 
             attachment.setChannelPipeline(channelPipeline);
 
-            poller.register(client, SelectionKey.OP_READ, attachment);
+            poller.register(client, SelectionKey.OP_READ | SelectionKey.OP_WRITE, attachment);
         }
     }
 
@@ -202,6 +202,33 @@ public class BrokerServer {
     }
 
     private void handleWriteEvent(SelectableChannel channel, Object attachment) throws IOException {
+        if (!(channel instanceof SocketChannel)) {
+            return;
+        }
+        if (!(attachment instanceof ConnectionAttachment)) {
+            return;
+        }
+
+        ConnectionAttachment connectionAttachment = (ConnectionAttachment) attachment;
+
+        SocketChannel socketChannel = (SocketChannel) channel;
+
+        Deque<ByteBuffer> outboundQueue = connectionAttachment.getOutboundQueue();
+
+        while (!outboundQueue.isEmpty()) {
+
+            ByteBuffer buffer = outboundQueue.peek();
+
+            int written = socketChannel.write(buffer);
+
+            if (written < 0) {
+                closeClient(socketChannel, connectionAttachment);
+            } else if (buffer.hasRemaining()) {
+                break;
+            }
+
+            outboundQueue.poll();
+        }
 
     }
 
