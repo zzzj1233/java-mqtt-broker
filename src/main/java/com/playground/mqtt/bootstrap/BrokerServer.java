@@ -31,6 +31,7 @@ public class BrokerServer {
     private final MessageRouter messageRouter;
     private final CountDownLatch stopLatch = new CountDownLatch(1);
     private final ChannelPipelineFactory channelPipelineFactory;
+    private final PeriodicTaskRunner periodicTaskRunner;
 
     private volatile boolean running;
 
@@ -41,7 +42,8 @@ public class BrokerServer {
             SessionStore sessionStore,
             SubscriptionStore subscriptionStore,
             MessageRouter messageRouter,
-            ChannelPipelineFactory channelPipelineFactory
+            ChannelPipelineFactory channelPipelineFactory,
+            PeriodicTaskRunner periodicTaskRunner
     ) {
         this.config = config;
         this.poller = poller;
@@ -50,6 +52,7 @@ public class BrokerServer {
         this.subscriptionStore = subscriptionStore;
         this.messageRouter = messageRouter;
         this.channelPipelineFactory = channelPipelineFactory;
+        this.periodicTaskRunner = periodicTaskRunner;
     }
 
     public void start() throws IOException {
@@ -69,13 +72,13 @@ public class BrokerServer {
             }
 
             if (events == null || events.isEmpty()) {
-                runPeriodicTasks();
+                periodicTaskRunner.runOnce();
                 continue;
             }
 
 
             handleEvents(events);
-            runPeriodicTasks();
+            periodicTaskRunner.runOnce();
         }
 
     }
@@ -89,10 +92,6 @@ public class BrokerServer {
                 safeCloseEventChannel(event);
             }
         }
-    }
-
-    public void runPeriodicTasks() {
-        // TODO: keep-alive timeout checks, QoS retry timers, stale session cleanup.
     }
 
     public void blockUntilShutdown() throws InterruptedException {

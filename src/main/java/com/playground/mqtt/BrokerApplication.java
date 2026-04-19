@@ -1,6 +1,8 @@
 package com.playground.mqtt;
 
 import com.playground.mqtt.bootstrap.BrokerServer;
+import com.playground.mqtt.bootstrap.DefaultPeriodicTaskRunner;
+import com.playground.mqtt.bootstrap.PeriodicTaskRunner;
 import com.playground.mqtt.config.BrokerConfig;
 import com.playground.mqtt.context.ChannelContext;
 import com.playground.mqtt.context.ChannelInboundHandler;
@@ -9,6 +11,7 @@ import com.playground.mqtt.context.DefaultChannelPipelineFactory;
 import com.playground.mqtt.context.handlers.*;
 import com.playground.mqtt.qos.InMemoryPacketIdGenerator;
 import com.playground.mqtt.qos.InMemoryQos1Store;
+import com.playground.mqtt.qos.PublishStore;
 import com.playground.mqtt.router.DefaultMessageRouter;
 import com.playground.mqtt.router.MessageRouter;
 import com.playground.mqtt.session.InMemorySessionStore;
@@ -48,13 +51,24 @@ public final class BrokerApplication {
 
         InMemoryPacketIdGenerator packetIdGenerator = new InMemoryPacketIdGenerator();
 
+        PublishStore publishStore = new PublishStore();
+
+        PeriodicTaskRunner periodicTaskRunner = new DefaultPeriodicTaskRunner(
+                qos1Store,
+                sessionStore,
+                publishStore,
+                packetIdGenerator,
+                config.qos1RetryIntervalSeconds(),
+                config.qos1MaxRetryCount()
+        );
+
         ChannelPipelineFactory pipelineFactory = new DefaultChannelPipelineFactory(
                 pipeline -> {
                     pipeline.addLast(new MqttCodecHandler());
                     pipeline.addLast(new ConnectionHandler(sessionStore));
                     pipeline.addLast(new SubscribeHandler(subscriptionStore, sessionStore));
-                    pipeline.addLast(new PublishHandler(subscriptionStore, qos1Store, packetIdGenerator, sessionStore));
-                    pipeline.addLast(new PubAckHandler(qos1Store, sessionStore));
+                    pipeline.addLast(new PublishHandler(subscriptionStore, qos1Store, packetIdGenerator, sessionStore, publishStore));
+                    pipeline.addLast(new PubAckHandler(qos1Store, sessionStore, publishStore, packetIdGenerator));
                     pipeline.addLast(new ChannelInboundHandler() {
                         @Override
                         public void channelRead(ChannelContext ctx, Object msg) {
@@ -71,7 +85,8 @@ public final class BrokerApplication {
                 sessionStore,
                 subscriptionStore,
                 messageRouter,
-                pipelineFactory
+                pipelineFactory,
+                periodicTaskRunner
         );
 
         Runtime.getRuntime().addShutdownHook(new Thread(brokerServer::stop));

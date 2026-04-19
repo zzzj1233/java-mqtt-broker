@@ -3,8 +3,7 @@ package com.playground.mqtt.context.handlers;
 import com.playground.mqtt.context.ChannelContext;
 import com.playground.mqtt.context.ChannelInboundHandlerAdapter;
 import com.playground.mqtt.protocol.frame.PubAckMqttFrame;
-import com.playground.mqtt.qos.InMemoryQos1Store;
-import com.playground.mqtt.qos.Qos1PacketState;
+import com.playground.mqtt.qos.*;
 import com.playground.mqtt.session.ClientSession;
 import com.playground.mqtt.session.SessionStore;
 import org.slf4j.Logger;
@@ -19,9 +18,15 @@ public class PubAckHandler extends ChannelInboundHandlerAdapter<PubAckMqttFrame>
 
     private final SessionStore sessionStore;
 
-    public PubAckHandler(InMemoryQos1Store qos1Store, SessionStore sessionStore) {
+    private final PublishStore publishStore;
+
+    private final InMemoryPacketIdGenerator packetIdGenerator;
+
+    public PubAckHandler(InMemoryQos1Store qos1Store, SessionStore sessionStore, PublishStore publishStore, InMemoryPacketIdGenerator packetIdGenerator) {
         this.qos1Store = qos1Store;
         this.sessionStore = sessionStore;
+        this.publishStore = publishStore;
+        this.packetIdGenerator = packetIdGenerator;
     }
 
     @Override
@@ -39,7 +44,17 @@ public class PubAckHandler extends ChannelInboundHandlerAdapter<PubAckMqttFrame>
         LOG.info("PubAckHandler received PUBACK clientId={} packetId={}", clientId, packetId);
 
         if (qos1Store.updateOutboundState(clientId, packetId, Qos1PacketState.ACKED)) {
-            boolean cleaned = qos1Store.cleanStatus(clientId, packetId, Qos1PacketState.ACKED);
+
+            Qos1InflightRecord removed = qos1Store.removeOutboundIfState(clientId, packetId, Qos1PacketState.ACKED);
+
+            boolean cleaned = removed != null;
+
+            if (removed != null) {
+                publishStore.release(removed.publishPayloadId());
+            }
+
+            packetIdGenerator.cleanPacketId(clientId, packetId);
+
             LOG.info("PubAckHandler outbound ACK state updated and cleaned clientId={} packetId={} cleaned={}",
                     clientId, packetId, cleaned);
         } else {

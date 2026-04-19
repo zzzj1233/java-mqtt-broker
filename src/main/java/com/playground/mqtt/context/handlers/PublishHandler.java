@@ -5,9 +5,7 @@ import com.playground.mqtt.context.ChannelInboundHandler;
 import com.playground.mqtt.context.ChannelPipeline;
 import com.playground.mqtt.protocol.frame.PubAckMqttFrame;
 import com.playground.mqtt.protocol.frame.PublishMqttFrame;
-import com.playground.mqtt.qos.InMemoryPacketIdGenerator;
-import com.playground.mqtt.qos.InMemoryQos1Store;
-import com.playground.mqtt.qos.Qos1PacketState;
+import com.playground.mqtt.qos.*;
 import com.playground.mqtt.session.ClientSession;
 import com.playground.mqtt.session.SessionStore;
 import com.playground.mqtt.subscription.Subscription;
@@ -29,16 +27,20 @@ public class PublishHandler implements ChannelInboundHandler {
 
     private final SessionStore sessionStore;
 
+    private final PublishStore publishStore;
+
     public PublishHandler(
             SubscriptionStore subscriptionStore,
             InMemoryQos1Store inMemoryQos1Store,
             InMemoryPacketIdGenerator packetIdGenerator,
-            SessionStore sessionStore
+            SessionStore sessionStore,
+            PublishStore publishStore
     ) {
         this.subscriptionStore = subscriptionStore;
         this.inMemoryQos1Store = inMemoryQos1Store;
         this.packetIdGenerator = packetIdGenerator;
         this.sessionStore = sessionStore;
+        this.publishStore = publishStore;
     }
 
     @Override
@@ -67,11 +69,24 @@ public class PublishHandler implements ChannelInboundHandler {
 
                 String clientId = clientSession.get().clientId();
 
-                if (inMemoryQos1Store.markFirstSeen(clientId, frame.getPacketId())) {
-                    doPublish(frame);
+                boolean firstSeen = inMemoryQos1Store.markFirstSeen(clientId, frame.getPacketId());
+
+                if (firstSeen) {
+                    try {
+                        doPublish(frame);
+                    } catch (RuntimeException e) {
+                        LOG.error("PublishHandler doPublish failed topic={} packetId={} clientId={}",
+                                frame.getTopic(), frame.getPacketId(), clientId, e);
+                    }
                 }
 
                 ctx.writeAndFlush(new PubAckMqttFrame(frame.getPacketId()));
+
+                inMemoryQos1Store.removeInboundIfState(
+                        clientId,
+                        frame.getPacketId(),
+                        Qos1PacketState.IN_FLIGHT
+                );
             } else {
                 doPublish(frame);
             }
@@ -93,6 +108,8 @@ public class PublishHandler implements ChannelInboundHandler {
 
         int publishQos = frame.getQos();
 
+        RefCountedPublishPayloadId publishPayloadId = null;
+
         for (Subscription subscription : subscriptions) {
 
             ChannelPipeline clientPipeline = subscription.channel().attachment().getChannelPipeline();
@@ -110,7 +127,11 @@ public class PublishHandler implements ChannelInboundHandler {
 
             PublishMqttFrame outboundFrame = frame;
             if (min == 1) {
-                int outboundPacketId = reserveOutboundPacketId(subscription.clientId());
+                if (publishPayloadId == null) {
+                    publishPayloadId = publishStore.store(frame);
+                }
+
+                int outboundPacketId = reserveOutboundPacketId(subscription.clientId(), publishPayloadId);
                 outboundFrame = new PublishMqttFrame(
                         frame.getDup(),
                         1,
@@ -136,11 +157,12 @@ public class PublishHandler implements ChannelInboundHandler {
         }
     }
 
-    private int reserveOutboundPacketId(String clientId) {
+    private int reserveOutboundPacketId(String clientId, RefCountedPublishPayloadId publishPayloadId) {
         for (int i = 0; i < 0xFFFF; i++) {
-            int candidate = packetIdGenerator.nextPacketId(clientId);
-            if (inMemoryQos1Store.updateOutboundState(clientId, candidate, Qos1PacketState.IN_FLIGHT)) {
-                return candidate;
+            int packetId = packetIdGenerator.nextPacketId(clientId);
+            if (inMemoryQos1Store.createOutboundInflight(clientId, packetId, publishPayloadId)) {
+                publishStore.retain(publishPayloadId);
+                return packetId;
             }
         }
         throw new IllegalStateException("No available outbound packetId for clientId: " + clientId);
